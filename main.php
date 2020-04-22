@@ -1,11 +1,11 @@
 <?php
-$sourceSections = '[{
+$sourceMenu = '[{
   "id": 1,
   "uuid": "c398d8aa-4b16-4a30-8586-4416299fb55d",
   "type": "section",
   "title": "Пользователи",
   "path": null,
-  "parent": null,
+  "parent": "root",
   "role": [
     "ROLE_ADMIN"
   ],
@@ -22,7 +22,7 @@ $sourceSections = '[{
   "type": "section",
   "title": "Тестовый раздел",
   "path": null,
-  "parent": null,
+  "parent": "root",
   "role": [
     "ROLE_ADMIN"
   ],
@@ -33,8 +33,7 @@ $sourceSections = '[{
   },
   "updatedAt": null,
   "deletedAt": null
-}]';
-$sourceSubsections = '[{
+}, {
   "id": 5,
   "uuid": "bd6b64cd-ae02-4cbb-b65c-ab1b34cbffd0",
   "type": "subsection",
@@ -51,8 +50,7 @@ $sourceSubsections = '[{
   },
   "updatedAt": null,
   "deletedAt": null
-}]';
-$sourceItems = '[{
+}, {
   "id": 2,
   "uuid": "c9469495-a8d3-4df2-ad9c-d962a7ebb8b7",
   "type": "item",
@@ -71,7 +69,7 @@ $sourceItems = '[{
   "deletedAt": null
 }, {
   "id": 3,
-  "uuid": "c9469495-a8d3-4df2-ad9c-d962a7ebb8b7",
+  "uuid": "d99a4ed0-e5e5-4f0a-9659-4f297aaa8f88",
   "type": "item",
   "title": "Администраторы",
   "path": "administrator",
@@ -122,39 +120,38 @@ $sourceItems = '[{
   "deletedAt": null
 }]';
 
-function filterNodes(string $uuid): object
-{
-  return function($item) use ($uuid)
-  {
+$data = json_decode($sourceMenu);
 
-    return $item->{'parent'} == $uuid;
-  };
+function createTree($data)
+{
+  $parents = [];
+  foreach ($data as $key => $item) {
+    $parents[$item->{'parent'}][$item->{'uuid'}] = $item;
+  }
+
+  $treeNode = $parents['root'];
+  createNode($treeNode, $parents);
+
+  return $treeNode;
 }
 
-$sections = json_decode($sourceSections);
-$subsections = json_decode($sourceSubsections);
-$items = json_decode($sourceItems);
+function createNode(&$treeNode, $parents)
+{
+  foreach ($treeNode as $key => $item) {
+    if (!isset($item->children)) {
+      $treeNode[$key]->children = [];
+    }
 
-$navigation = array_map(function ($section) use ($subsections, $items): object
-  {
-    $uuid = $section->{'uuid'};
-    $nodes = array_filter($items, filterNodes($uuid));
-    $children = array_map(function ($node): object
-    {
-      return (object) array(
-        'name' => $node->{'title'},
-        'url' => $node->{'path'},
-      );
-    }, $nodes);
+    if (array_key_exists($key, $parents)) {
+      $treeNode[$key]->children = $parents[$key];
+      createNode($treeNode[$key]->children, $parents);
+    }
+  }
+}
 
-    return (object) array(
-      'name' => $section->{'title'},
-      'children' => $children,
-    );
-  }, $sections
-);
+$tree = createTree($data);
 
-var_dump($navigation);
+var_dump(json_encode(array_values($tree)));
 
 echo PHP_EOL, PHP_EOL, 'Terminate?';
 $terminateHandler = fopen ('php://stdin','r');
