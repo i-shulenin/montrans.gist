@@ -122,17 +122,15 @@ $sourceMenu = '[{
 
 $data = json_decode($sourceMenu);
 
-function createTree($data)
+function convertNode(&$treeNode)
 {
-  $parents = [];
-  foreach ($data as $key => $item) {
-    $parents[$item->{'parent'}][$item->{'uuid'}] = $item;
+  foreach ($treeNode as $key => $item) {
+    if (isset($item->children)) {
+      convertNode($item->children);
+    }
+
+    $item->children = array_values($item->children);
   }
-
-  $treeNode = $parents['root'];
-  createNode($treeNode, $parents);
-
-  return $treeNode;
 }
 
 function createNode(&$treeNode, $parents)
@@ -149,9 +147,23 @@ function createNode(&$treeNode, $parents)
   }
 }
 
-$tree = createTree($data);
+function createTree($data)
+{
+  $parents = [];
+  foreach ($data as $key => $item) {
+    $parents[$item->{'parent'}][$item->{'uuid'}] = $item;
+  }
 
-var_dump(json_encode(array_values($tree)));
+  $treeNode = $parents['root'];
+  createNode($treeNode, $parents); 
+  convertNode($treeNode);
+
+  return $treeNode;
+}
+
+$tree = array_values(createTree($data));
+
+var_dump(json_encode($tree));
 
 echo PHP_EOL, PHP_EOL, 'Terminate?';
 $terminateHandler = fopen ('php://stdin','r');
